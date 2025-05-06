@@ -1,0 +1,22 @@
+name: koko_kakeibo
+description: A new Flutter project.
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  pie_chart: ^5.1.0
+  shared_preferences: ^2.2.2
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/fonts/NotoSansJP-Regular.ttf
+
+  fonts:
+    - family: NotoSansJP
+      fonts:
+        - asset: assets/fonts/NotoSansJP-Regular.ttf
