@@ -9,6 +9,7 @@ dependencies:
     sdk: flutter
   pie_chart: ^5.1.0
   shared_preferences: ^2.2.2
+  provider: ^6.0.5
 
 flutter:
   uses-material-design: true

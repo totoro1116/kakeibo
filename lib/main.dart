@@ -3,27 +3,65 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'graph_screen.dart';
 import 'setting_screen.dart';
+import 'package:koko_kakeibo/utils/category_utils.dart';
+import 'package:provider/provider.dart';
+import 'package:koko_kakeibo/utils/theme_notifier.dart';
 
-void main() {
-  runApp(MyApp());
+Future<void> main() async {
+  // ★ Flutter を async で使うときはコレが必須！
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // ★ SharedPreferences から保存済みモードを読み込む
+  final themeMode = await ThemeNotifier.initMode();
+
+  // ★ Provider を使ってアプリ全体に ThemeNotifier を渡す
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeNotifier(themeMode),
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ココ家計簿❤',
-      theme: ThemeData(
-        primarySwatch: Colors.pink,
-        useMaterial3: true,
-        textTheme: ThemeData.light().textTheme.apply(
-              fontFamily: 'NotoSansJP',
-            ),
-        iconTheme: const IconThemeData(
-          color: Colors.black, // アイコン色も指定できるよ
-        ),
-      ),
-      home: HomeScreen(),
+    // ThemeNotifier の変更を監視して、themeMode を切り替え
+    return Consumer<ThemeNotifier>(
+      builder: (context, notifier, _) {
+        return MaterialApp(
+          title: 'ココ家計簿❤',
+
+          // ここでライト／ダークを制御
+          themeMode: notifier.mode,
+
+          // ────────────────────────
+          // ★ ライトテーマ（ピンクアクセント）
+          theme: ThemeData(
+            brightness: Brightness.light,
+            primarySwatch: Colors.pink,
+            useMaterial3: true,
+            textTheme: ThemeData.light().textTheme.apply(
+                  fontFamily: 'NotoSansJP',
+                ),
+            iconTheme: const IconThemeData(color: Colors.black),
+          ),
+
+          // ★ ダークテーマ（背景だけ暗く、アクセントは同じピンク）
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            primarySwatch: Colors.pink,
+            useMaterial3: true,
+            textTheme: ThemeData.dark().textTheme.apply(
+                  fontFamily: 'NotoSansJP',
+                ),
+            iconTheme: const IconThemeData(color: Colors.pinkAccent),
+          ),
+          // ────────────────────────
+
+          home: HomeScreen(),
+        );
+      },
     );
   }
 }
@@ -35,6 +73,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  final GlobalKey<_HomeContentState> homeKey = GlobalKey();
 
   String selectedMonth = '';
   String selectedYear = '';
@@ -66,6 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // 💡 画面リスト（ここに渡す！）
     final List<Widget> _screens = [
       HomeContent(
+        key: homeKey,
         selectedMonth: selectedMonth,
         selectedYear: selectedYear,
         onMonthChanged: updateMonth,
@@ -90,6 +130,9 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: Colors.grey, // 🩶選ばれてないやつの色
         showUnselectedLabels: true, // 未選択のラベルも表示！
         onTap: (index) {
+          if (index == 0) {
+            homeKey.currentState?._loadCategories();
+          }
           setState(() {
             _currentIndex = index;
           });
@@ -204,12 +247,14 @@ class HomeContent extends StatefulWidget {
   final Function(String) onMonthChanged;
   final Function(String) onYearChanged;
 
-  HomeContent({
+  // ← key を受け取るコンストラクタに変更！
+  const HomeContent({
+    Key? key,
     required this.selectedMonth,
     required this.selectedYear,
     required this.onMonthChanged,
     required this.onYearChanged,
-  });
+  }) : super(key: key);
 
   @override
   State<HomeContent> createState() => _HomeContentState();
@@ -217,24 +262,37 @@ class HomeContent extends StatefulWidget {
 
 class _HomeContentState extends State<HomeContent> {
   final TextEditingController amountController = TextEditingController();
-  final Map<String, List<String>> categoryMap = {
+
+  /// まずはデフォルトのカテゴリで初期化！
+  Map<String, List<String>> categoryMap = {
     '食費': ['お菓子', '弁当', '外食'],
     '光熱費': ['電気', 'ガス', '水道'],
     '趣味': ['ゲーム', '本', '映画'],
     '交通': ['電車', 'バス', 'タクシー'],
     '雑費': ['文房具', '日用品', 'その他'],
   };
-
-  String selectedParentCategory = '食費';
-  String selectedSubCategory = 'お菓子';
+  String selectedParentCategory = '食費'; // ← デフォルトと合わせる
+  String selectedSubCategory = 'お菓子'; //
 
   List<Map<String, dynamic>> expenses = [];
-  DateTime selectedDate = DateTime.now(); // ← 日付入力のデフォ
+  DateTime selectedDate = DateTime.now();
 
   @override
   void initState() {
     super.initState();
+    _loadCategories();
     loadExpenses();
+  }
+
+  /// SharedPreferences からカテゴリを読み込んで state に反映
+  Future<void> _loadCategories() async {
+    final loaded = await loadCategories(); // category_utils.dart の関数
+    setState(() {
+      categoryMap = loaded;
+      // 初期選択はリストの最初の要素
+      selectedParentCategory = categoryMap.keys.first;
+      selectedSubCategory = categoryMap[selectedParentCategory]!.first;
+    });
   }
 
   void addExpense() async {
@@ -319,37 +377,44 @@ class _HomeContentState extends State<HomeContent> {
               // 親カテゴリ選択
               DropdownButton<String>(
                 value: selectedParentCategory,
+                items: categoryMap.keys
+                    .map((parent) => DropdownMenuItem(
+                          value: parent,
+                          child: Text(parent),
+                        ))
+                    .toList(),
                 onChanged: (value) {
+                  if (value == null) return;
+                  final subs = categoryMap[value]!;
                   setState(() {
-                    selectedParentCategory = value!;
-                    selectedSubCategory =
-                        categoryMap[selectedParentCategory]!.first;
+                    selectedParentCategory = value;
+                    // サブカテゴリが空なら空文字、それ以外はfirst
+                    selectedSubCategory = subs.isNotEmpty ? subs.first : '';
                   });
                 },
-                items: categoryMap.keys.map((parent) {
-                  return DropdownMenuItem(
-                    value: parent,
-                    child: Text(parent),
-                  );
-                }).toList(),
               ),
 
               SizedBox(width: 8),
 
 // サブカテゴリ選択
               DropdownButton<String>(
-                value: selectedSubCategory,
-                onChanged: (value) {
-                  setState(() {
-                    selectedSubCategory = value!;
-                  });
-                },
-                items: categoryMap[selectedParentCategory]!.map((sub) {
-                  return DropdownMenuItem(
-                    value: sub,
-                    child: Text(sub),
-                  );
-                }).toList(),
+                value:
+                    selectedSubCategory.isNotEmpty ? selectedSubCategory : null,
+                disabledHint: Text('サブカテゴリなし'),
+                hint: Text('サブカテゴリを選択'),
+                items: categoryMap[selectedParentCategory]!
+                    .map((sub) => DropdownMenuItem(
+                          value: sub,
+                          child: Text(sub),
+                        ))
+                    .toList(),
+                onChanged: categoryMap[selectedParentCategory]!.isNotEmpty
+                    ? (value) {
+                        setState(() {
+                          selectedSubCategory = value!;
+                        });
+                      }
+                    : null,
               ),
 
               SizedBox(width: 8),

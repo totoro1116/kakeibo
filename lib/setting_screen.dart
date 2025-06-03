@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:koko_kakeibo/utils/theme_notifier.dart';
 import 'category_manager.dart';
 
 class SettingScreen extends StatelessWidget {
@@ -25,16 +27,23 @@ class SettingScreen extends StatelessWidget {
               );
             },
           ),
-          ListTile(
-            leading: Icon(Icons.color_lens),
-            title: Text('テーマ切替'),
-            trailing: Switch(
-              value: false,
-              onChanged: (value) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('テーマ切替機能（まだ未実装）❤')),
-                );
-              },
+          Consumer<ThemeNotifier>(
+            builder: (context, notifier, _) => ListTile(
+              leading: Icon(Icons.color_lens),
+              title: Text('ダークモード'),
+              trailing: Switch(
+                value: notifier.mode == ThemeMode.dark,
+                onChanged: (enabled) {
+                  notifier.toggle(enabled);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        enabled ? 'ダークモードにしたよ❤' : 'ライトモードに戻したよ❤',
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
           ListTile(
