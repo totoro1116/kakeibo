@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:koko_kakeibo/utils/theme_notifier.dart';
 import 'category_manager.dart';
+import 'fixed_cost_manager.dart';
 
 class SettingScreen extends StatelessWidget {
   const SettingScreen({super.key});
@@ -61,8 +62,11 @@ class SettingScreen extends StatelessWidget {
             title: Text('固定費の管理'),
             trailing: Icon(Icons.arrow_forward_ios),
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('固定費管理（準備中だよ〜❤）')),
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FixedCostManagerScreen(), // ←ここで画面へ遷移
+                ),
               );
             },
           ),

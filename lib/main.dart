@@ -6,6 +6,7 @@ import 'setting_screen.dart';
 import 'package:koko_kakeibo/utils/category_utils.dart';
 import 'package:provider/provider.dart';
 import 'package:koko_kakeibo/utils/theme_notifier.dart';
+import 'utils/fixed_cost_utils.dart';
 
 Future<void> main() async {
   // ★ Flutter を async で使うときはコレが必須！
@@ -276,12 +277,26 @@ class _HomeContentState extends State<HomeContent> {
 
   List<Map<String, dynamic>> expenses = [];
   DateTime selectedDate = DateTime.now();
+  List<Map<String, dynamic>> fixedCosts = [];
 
   @override
   void initState() {
     super.initState();
     _loadCategories();
     loadExpenses();
+    _loadFixedCosts();
+  }
+
+  bool isFixedCost(String category, String subcategory) {
+    return fixedCosts.any((fixed) =>
+        fixed['parent'] == category && fixed['child'] == subcategory);
+  }
+
+  Future<void> _loadFixedCosts() async {
+    final list = await loadFixedCosts(); // fixed_cost_utils.dartの関数
+    setState(() {
+      fixedCosts = list;
+    });
   }
 
   /// SharedPreferences からカテゴリを読み込んで state に反映
@@ -484,6 +499,10 @@ class _HomeContentState extends State<HomeContent> {
                     child: Icon(Icons.delete, color: Colors.white),
                   ),
                   child: ListTile(
+                    tileColor:
+                        isFixedCost(item['category'], item['subcategory'])
+                            ? Colors.pink.shade50 // 固定費ならピンク背景
+                            : null, // それ以外はデフォルト
                     title: Text(
                         "¥${item['amount']} - ${item['category']} > ${item['subcategory']}"),
                     subtitle: Text(dateStr),

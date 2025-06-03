@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'utils/category_utils.dart'; // ← 先ほど作ったユーティリティをimport
+import 'utils/category_utils.dart';
 
 class CategoryManagerScreen extends StatefulWidget {
   @override
