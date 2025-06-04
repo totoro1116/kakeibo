@@ -10,11 +10,12 @@ class GraphScreen extends StatefulWidget {
   final Function(String) onYearChanged;
 
   GraphScreen({
+    Key? key,
     required this.selectedMonth,
     required this.selectedYear,
     required this.onMonthChanged,
     required this.onYearChanged,
-  });
+  }) : super(key: key);
 
   @override
   State<GraphScreen> createState() => _GraphScreenState();

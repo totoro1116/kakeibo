@@ -140,9 +140,13 @@ class _FixedCostManagerScreenState extends State<FixedCostManagerScreen> {
                             'frequency': frequency.toString(),
                             'payDay': payDay,
                             'amount': amountController.text,
+                            'nextDate': calculateNextDate(
+                                    payDay, frequency.toString())
+                                .toIso8601String(),
                           });
                         });
                         await _saveFixedCosts(); // 保存
+                        await autoAddFixedCosts();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('固定費として追加したよ❤')),
                         );
