@@ -15,6 +15,9 @@ Future<void> main() async {
   // ★ SharedPreferences から保存済みモードを読み込む
   final themeMode = await ThemeNotifier.initMode();
 
+  // 固定費を自動で反映
+  await autoAddFixedCosts();
+
   // ★ Provider を使ってアプリ全体に ThemeNotifier を渡す
   runApp(
     ChangeNotifierProvider(
@@ -75,6 +78,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   final GlobalKey<_HomeContentState> homeKey = GlobalKey();
+  final GlobalKey<_GraphScreenState> graphKey = GlobalKey();
 
   String selectedMonth = '';
   String selectedYear = '';
@@ -113,6 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onYearChanged: updateYear,
       ),
       GraphScreen(
+        key: graphKey,
         selectedMonth: selectedMonth,
         selectedYear: selectedYear,
         onMonthChanged: updateMonth,
@@ -133,6 +138,10 @@ class _HomeScreenState extends State<HomeScreen> {
         onTap: (index) {
           if (index == 0) {
             homeKey.currentState?._loadCategories();
+            homeKey.currentState?._loadFixedCosts();
+            homeKey.currentState?.loadExpenses();
+          } else if (index == 1) {
+            graphKey.currentState?.loadAndSummarizeExpenses();
           }
           setState(() {
             _currentIndex = index;
@@ -297,6 +306,8 @@ class _HomeContentState extends State<HomeContent> {
     setState(() {
       fixedCosts = list;
     });
+    await autoAddFixedCosts();
+    loadExpenses();
   }
 
   /// SharedPreferences からカテゴリを読み込んで state に反映
